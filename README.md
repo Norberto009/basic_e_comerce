@@ -1,64 +1,68 @@
+# Basic E-Commerce API
 
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+API REST para una tienda en línea construida con **Laravel 12** y **PHP 8.2+**. Incluye catálogo de productos, autenticación de clientes con tokens (Sanctum), órdenes de compra y registro manual de pagos.
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
 
-## About Laravel
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Stack
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Laravel 12 / PHP 8.2+
+- Base de datos: MySQL 
+- Autenticación: Laravel Sanctum (tokens Bearer)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Instalación
 
-## Learning Laravel
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate 
+php artisan serve
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+El seeder crea un usuario de prueba (`test@example.com` / `password`) y 25 productos de ejemplo. La API queda en `http://127.0.0.1:8000/api`.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Autenticación
 
-## Laravel Sponsors
+`POST /api/auth/register` y `POST /api/auth/login` devuelven un `token`, que se envía en las rutas protegidas:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```
+Authorization: Bearer {token}
+```
 
-### Premium Partners
+Un usuario con `is_active = false` no puede iniciar sesión 
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Endpoints
 
-## Contributing
+| Método | Ruta | Descripción | Auth |
+|---|---|---|:---:|
+| POST | `/api/auth/register` | Registrar cliente | No |
+| POST | `/api/auth/login` | Iniciar sesión | No |
+| POST | `/api/auth/logout` | Revocar el token actual | Sí |
+| GET | `/api/auth/me` | Usuario autenticado | Sí |
+| GET | `/api/products` | Listado público (`search`, `per_page`) | No |
+| GET | `/api/products/{product}` | Detalle de producto | No |
+| POST | `/api/products` | Crear producto | Sí |
+| PUT/PATCH | `/api/products/{product}` | Actualizar producto | Sí |
+| DELETE | `/api/products/{product}` | Eliminar (soft delete) | Sí |
+| PUT | `/api/products/{product}/restore` | Restaurar producto eliminado | Sí |
+| GET | `/api/orders` | Todas las órdenes | Sí |
+| POST | `/api/orders` | Crear orden | Sí |
+| GET | `/api/orders/user/{user}` | Historial de un usuario | Sí |
+| GET | `/api/orders/{order}` | Detalle (solo el dueño) | Sí |
+| PUT | `/api/orders/{order}/mark-as-paid` | Marcar orden como pagada manualmente | Sí (no el dueño) |
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Al crear una orden se valida el stock, se congela el precio unitario y se descuenta el inventario dentro de una transacción con `lockForUpdate`.
 
-## Code of Conduct
+## Estructura
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- `app/Http/Controllers/Api`: `AuthController`, `ProductController`, `OrderController`, `PaymentController` (solo pago manual)
+- `app/Http/Requests`: Form Requests por operación de escritura
+- `app/Http/Resources`: transformación JSON de productos y órdenes
+- `app/Models`: `User`, `Product`, `Order`, `OrderItem`, `Payment`
+- `bootstrap/app.php`: manejo centralizado de errores en JSON
 
-## Security Vulnerabilities
+## Notas
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-=======
-# basic_e_comerce
-Proyecto Tarea entregable
-
+- Sin sistema de roles: cualquier usuario autenticado puede gestionar productos y marcar órdenes ajenas como pagadas.
+- Reiniciar la base: `php artisan migrate:fresh --seed`.
